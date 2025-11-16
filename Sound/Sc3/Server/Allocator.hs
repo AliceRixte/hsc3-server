@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Sound.SC3.Server.Allocator (
+module Sound.Sc3.Server.Allocator (
   -- *Allocation errors
   AllocFailure(..)
   -- * Allocator statistics
@@ -18,11 +18,11 @@ module Sound.SC3.Server.Allocator (
 ) where
 
 import           Control.Exception (Exception)
-import           Control.Failure (Failure)
+import           Control.Monad.Catch (MonadThrow)
 import           Data.Typeable (Typeable)
-import           Sound.SC3.Server.Allocator.Range
+import           Sound.Sc3.Server.Allocator.Range
 
--- | Failure type for allocators.
+-- | Exception type for allocators.
 data AllocFailure =
     NoFreeIds   -- ^ There are no free ids left in the allocator.
   | InvalidId   -- ^ The id being released has not been allocated by this allocator.
@@ -59,13 +59,13 @@ class IdAllocator a where
   type Id a
 
   -- | Allocate a new identifier and return the changed allocator.
-  alloc :: Failure AllocFailure m => a -> m (Id a, a)
+  alloc :: MonadThrow m => a -> m (Id a, a)
 
   -- | Free a previously allocated identifier and return the changed allocator.
   --
   -- Freeing an identifier that hasn't been allocated with this allocator may
   -- trigger a failure.
-  free  :: Failure AllocFailure m => Id a -> a -> m a
+  free  :: MonadThrow m => Id a -> a -> m a
 
   -- | Return usage statistics.
   statistics :: a -> Statistics
@@ -73,7 +73,7 @@ class IdAllocator a where
 -- | Allocate a number of (not necessarily consecutive) IDs with the given allocator.
 --
 -- Returns the list of IDs and the modified allocator.
-allocMany :: (IdAllocator a, Failure AllocFailure m) => Int -> a -> m ([Id a], a)
+allocMany :: (IdAllocator a, MonadThrow m) => Int -> a -> m ([Id a], a)
 allocMany n a
     | n <= 0 = return ([], a)
     | n > numAvailable (statistics a) =
@@ -90,7 +90,7 @@ allocMany n a
 -- | Free a number of IDs with the given allocator.
 --
 -- Returns the modified allocator.
-freeMany :: (IdAllocator a, Failure AllocFailure m) => [Id a] -> a -> m a
+freeMany :: (IdAllocator a, MonadThrow m) => [Id a] -> a -> m a
 freeMany is a = go is a
   where
     go [] a = return a
@@ -100,7 +100,7 @@ freeMany is a = go is a
 --   of consecutive identifiers.
 class IdAllocator a => RangeAllocator a where
   -- | Allocate n consecutive identifiers and return the changed allocator.
-  allocRange :: Failure AllocFailure m => Int -> a -> m (Range (Id a), a)
+  allocRange :: MonadThrow m => Int -> a -> m (Range (Id a), a)
   -- | Free a range of previously allocated identifiers and return the changed
   --   allocator.
-  freeRange  :: Failure AllocFailure m => Range (Id a) -> a -> m a
+  freeRange  :: MonadThrow m => Range (Id a) -> a -> m a

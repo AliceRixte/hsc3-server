@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
-module Sound.SC3.Server.Allocator.SimpleAllocator (
+module Sound.Sc3.Server.Allocator.SimpleAllocator (
     SimpleAllocator
   , cons
 ) where
 
-import           Control.Failure (Failure, failure)
-import           Sound.SC3.Server.Allocator
-import           Sound.SC3.Server.Allocator.Range (Range)
-import qualified Sound.SC3.Server.Allocator.Range as Range
+import           Control.Monad.Catch (MonadThrow (..))
+import           Sound.Sc3.Server.Allocator
+import           Sound.Sc3.Server.Allocator.Range (Range)
+import qualified Sound.Sc3.Server.Allocator.Range as Range
 
 data SimpleAllocator i =
     SimpleAllocator
@@ -25,11 +25,11 @@ _alloc (SimpleAllocator r n i) =
     let i' = succ i
     in return (i, SimpleAllocator r (n+1) (if i' >= Range.end r then Range.begin r else i'))
 
-_free :: (Failure AllocFailure m) => i -> SimpleAllocator i -> m (SimpleAllocator i)
+_free :: (MonadThrow m) => i -> SimpleAllocator i -> m (SimpleAllocator i)
 _free _ (SimpleAllocator r n i) =
     let n' = n-1
     in if n' < 0
-       then failure InvalidId
+       then throwM InvalidId
        else return (SimpleAllocator r n' i)
 
 _statistics :: Integral i => SimpleAllocator i -> Statistics

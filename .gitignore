@@ -2,4 +2,4 @@
 /dist/
 *.hi
 *.o
-
+.stack-work/

@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Sound.SC3.Server.Allocator.Range (
+module Sound.Sc3.Server.Allocator.Range (
     Range
   , range
   , sized

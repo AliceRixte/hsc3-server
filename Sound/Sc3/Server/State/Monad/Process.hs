@@ -1,17 +1,17 @@
-module Sound.SC3.Server.State.Monad.Process (
+module Sound.Sc3.Server.State.Monad.Process (
   withTransport
 , withSynth
 , withDefaultSynth
 -- * Re-exported for convenience
-, module Sound.SC3.Server.Process
+, module Sound.Sc3.Server.Process
 ) where
 
 import           Data.Default (def)
-import qualified Sound.SC3.Server.Connection as Conn
-import           Sound.SC3.Server.Process hiding (withSynth, withTransport)
-import qualified Sound.SC3.Server.Process as Process
-import           Sound.SC3.Server.State.Monad (Server)
-import qualified Sound.SC3.Server.State.Monad as Server
+import qualified Sound.Sc3.Server.Connection as Conn
+import           Sound.Sc3.Server.Process hiding (withSynth, withTransport)
+import qualified Sound.Sc3.Server.Process as Process
+import           Sound.Sc3.Server.State.Monad (Server)
+import qualified Sound.Sc3.Server.State.Monad as Server
 
 -- | Open a transport to an existing @scsynth@ process determined by
 --   'networkPort' and run the supplied 'Server' action.

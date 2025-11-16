@@ -6,7 +6,7 @@
 -- | Data type for holding server state.
 --
 -- The server state consists mainly of the allocators needed for different types of resources, such as nodes, buffers and buses.
-module Sound.SC3.Server.State (
+module Sound.Sc3.Server.State (
   SyncId
 , SyncIdAllocator
 , syncIdAllocator
@@ -27,13 +27,13 @@ module Sound.SC3.Server.State (
 ) where
 
 import           Data.Int (Int32)
-import           Sound.SC3.Server.Allocator (IdAllocator(..), RangeAllocator(..))
-import qualified Sound.SC3.Server.Allocator.BlockAllocator.FirstFit as FirstFitAllocator
-import qualified Sound.SC3.Server.Allocator.Range as Range
-import qualified Sound.SC3.Server.Allocator.SetAllocator as SetAllocator
-import qualified Sound.SC3.Server.Allocator.SimpleAllocator as SimpleAllocator
-import qualified Sound.SC3.Server.Allocator.Wrapped as Wrapped
-import           Sound.SC3.Server.Process.Options (ServerOptions(..))
+import           Sound.Sc3.Server.Allocator (IdAllocator(..), RangeAllocator(..))
+import qualified Sound.Sc3.Server.Allocator.BlockAllocator.FirstFit as FirstFitAllocator
+import qualified Sound.Sc3.Server.Allocator.Range as Range
+import qualified Sound.Sc3.Server.Allocator.SetAllocator as SetAllocator
+import qualified Sound.Sc3.Server.Allocator.SimpleAllocator as SimpleAllocator
+import qualified Sound.Sc3.Server.Allocator.Wrapped as Wrapped
+import           Sound.Sc3.Server.Process.Options (ServerOptions(..))
 
 -- | Synchronisation barrier id.
 newtype SyncId = SyncId Int32 deriving (Bounded, Enum, Eq, Integral, Num, Ord, Real, Show)

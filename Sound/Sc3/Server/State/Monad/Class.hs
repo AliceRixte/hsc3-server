@@ -1,25 +1,25 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
-module Sound.SC3.Server.State.Monad.Class (
+module Sound.Sc3.Server.State.Monad.Class (
   MonadServer(..)
 , serverOption
 , MonadIdAllocator(..)
-, RequestOSC(..)
+, RequestOsc(..)
 ) where
 
 import Control.Monad (liftM)
-import Sound.OSC (OSC)
-import Sound.OSC.Transport.Monad (SendOSC)
-import Sound.SC3.Server.Allocator (Id, IdAllocator, RangeAllocator, Statistics)
-import Sound.SC3.Server.Allocator.Range (Range)
-import Sound.SC3.Server.Notification (Notification)
-import Sound.SC3.Server.State ( AudioBusIdAllocator
+import Sound.Osc (Packet)
+import Sound.Osc.Transport.Monad (SendOsc)
+import Sound.Sc3.Server.Allocator (Id, IdAllocator, RangeAllocator, Statistics)
+import Sound.Sc3.Server.Allocator.Range (Range)
+import Sound.Sc3.Server.Notification (Notification)
+import Sound.Sc3.Server.State ( AudioBusIdAllocator
                               , ControlBusIdAllocator
                               , BufferIdAllocator
                               , NodeId
                               , NodeIdAllocator
                               , SyncIdAllocator )
-import Sound.SC3.Server.Process (ServerOptions)
+import Sound.Sc3.Server.Process (ServerOptions)
 
 class Monad m => MonadServer m where
   -- | Return the server options.
@@ -58,8 +58,8 @@ class Monad m => MonadIdAllocator m where
   -- | Free a contiguous range of ids using the given allocator.
   freeRange :: RangeAllocator a => Allocator m a -> Range (Id a) -> m ()
 
-class SendOSC m => RequestOSC m where
+class SendOsc m => RequestOsc m where
   -- | Wait for a notification and return the result.
-  request :: OSC o => o -> Notification a -> m a
+  request :: Packet -> Notification a -> m a
   -- | Wait for a set of notifications and return their results in unspecified order.
-  requestAll :: OSC o => o -> [Notification a] -> m [a]
+  requestAll :: Packet -> [Notification a] -> m [a]
