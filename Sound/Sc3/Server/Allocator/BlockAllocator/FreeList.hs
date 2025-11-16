@@ -1,4 +1,4 @@
-module Sound.SC3.Server.Allocator.BlockAllocator.FreeList
+module Sound.Sc3.Server.Allocator.BlockAllocator.FreeList
   (
     FreeList
   , Sorting(..)
@@ -12,8 +12,8 @@ module Sound.SC3.Server.Allocator.BlockAllocator.FreeList
 
 import           Data.Ord (comparing)
 import qualified Data.List as List
-import           Sound.SC3.Server.Allocator.Range (Range)
-import qualified Sound.SC3.Server.Allocator.Range as Range
+import           Sound.Sc3.Server.Allocator.Range (Range)
+import qualified Sound.Sc3.Server.Allocator.Range as Range
 
 data Sorting = Address | IncreasingSize | DecreasingSize deriving (Enum, Eq, Show)
 

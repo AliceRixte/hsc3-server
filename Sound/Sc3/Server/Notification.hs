@@ -1,5 +1,5 @@
 -- | Server notification processors.
-module Sound.SC3.Server.Notification (
+module Sound.Sc3.Server.Notification (
     Notification(..)
   , hasAddress
   , waitFor
@@ -23,29 +23,30 @@ import qualified Data.ByteString.Char8 as C
 import           Data.Int
 import           Data.List
 import qualified Data.List.Zipper as Zipper
-import           Sound.SC3.Server.State (BufferId, NodeId, SyncId)
-import           Sound.OSC.Type
-import           Sound.OSC.Transport.Monad (RecvOSC(..), SendOSC(..), recvMessage)
+import           Sound.Sc3.Server.State (BufferId, NodeId, SyncId)
+import           Sound.Osc.Datum
+import           Sound.Osc (Message(..))
+import           Sound.Osc.Transport.Monad (Transport, RecvOsc(..), SendOsc(..), recvMessage)
 
--- | A notification transformer, extracting a value from a matching OSC message.
+-- | A notification transformer, extracting a value from a matching Osc message.
 newtype Notification a = Notification { match :: Message -> Maybe a }
 
 instance Functor Notification where
     fmap f = Notification . (.) (fmap f) . match
 
--- | Wait for an OSC message matching a specific address.
+-- | Wait for an Osc message matching a specific address.
 --
--- Returns the matched OSC message.
+-- Returns the matched Osc message.
 hasAddress :: String -> Notification Message
 hasAddress a = Notification f
     where
         f p@(Message a' _) | a == a' = Just p
         f _ = Nothing
 
--- | Send an OSC packet and wait for a notification.
+-- | Send an Osc packet and wait for a notification.
 --
 -- Returns the transformed value.
-waitFor :: (RecvOSC m, SendOSC m) => Notification a -> m a
+waitFor :: (RecvOsc m, SendOsc m) => Notification a -> m a
 waitFor n = go
   where
     go = do
@@ -54,10 +55,10 @@ waitFor n = go
         Nothing -> go
         Just a -> return a
 
--- | Send an OSC packet and wait for a list of notifications.
+-- | Send an Osc packet and wait for a list of notifications.
 --
 -- Returns the transformed values, in unspecified order.
-waitForAll :: (RecvOSC m, SendOSC m) => [Notification a] -> m [a]
+waitForAll :: (Transport m) => [Notification a] -> m [a]
 waitForAll = go []
   where
     go as [] = return as
@@ -119,7 +120,7 @@ normalize s       = s
 done :: String -> Notification [Datum]
 done c = Notification f
     where
-        f (Message "/done" (ASCII_String s : xs)) | normalize c == normalize (C.unpack s) = Just xs
+        f (Message "/done" (AsciiString s : xs)) | normalize c == normalize (C.unpack s) = Just xs
         f _ = Nothing
 
 data NodeNotification =
@@ -220,7 +221,7 @@ n_set nid = Notification f
     pairs (a:a':as) = (a, a') : pairs as
     pairs _ = []
     ctrl (Int32 k, Float v) = Just (Left k, v)
-    ctrl (ASCII_String k, Float v) = Just (Right (C.unpack k), v)
+    ctrl (AsciiString k, Float v) = Just (Right (C.unpack k), v)
     ctrl _ = Nothing
 
 n_setn :: NodeId -> Notification [(Either Int32 String, [Float])]
@@ -232,7 +233,7 @@ n_setn nid = Notification f
     value (Float v) = Just (realToFrac v)
     value _ = Nothing
     conv (Int32 k:Int32 n:xs)    = (pure (,) <*> pure (Left k) <*> mapM value (genericTake n xs)) : conv (genericDrop n xs)
-    conv (ASCII_String k:Int32 n:xs) = (pure (,) <*> pure (Right (C.unpack k)) <*> mapM value (genericTake n xs)) : conv (genericDrop n xs)
+    conv (AsciiString k:Int32 n:xs) = (pure (,) <*> pure (Right (C.unpack k)) <*> mapM value (genericTake n xs)) : conv (genericDrop n xs)
     conv _ = []
 
 data BufferInfo = BufferInfo {

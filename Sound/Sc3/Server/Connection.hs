@@ -5,7 +5,7 @@
 -- | A 'Connection' encapsulates the communication with the synthesis server.
 -- This module provides functions for opening and closing connections, as well
 -- as communication and synchronisation primitives.
-module Sound.SC3.Server.Connection (
+module Sound.Sc3.Server.Connection (
   Connection
   -- * Creation and termination
 , open
@@ -17,13 +17,14 @@ module Sound.SC3.Server.Connection (
 ) where
 
 import           Control.Concurrent (ThreadId, forkIO, myThreadId)
-import           Control.Monad (forever)
 import           Control.Concurrent.MVar
 import qualified Control.Exception as E
-import           Control.Monad (void)
+import           Control.Monad (void, forever)
 import qualified Data.HashTable.IO as H
-import           Sound.OSC.FD (OSC(..), Packet, Transport)
-import qualified Sound.OSC.FD as OSC
+import           Sound.Osc (Packet)
+import           Sound.Osc.Transport.Fd (Transport)
+import           Sound.Osc.Transport.Monad ( SendOsc(..))
+import qualified Sound.Osc.Fd as Osc
 
 type Listener = Packet -> IO ()
 type ListenerMap = H.CuckooHashTable ThreadId Listener
@@ -35,9 +36,9 @@ listeners (Connection _ l) = l
 
 recvLoop :: Connection -> IO ()
 recvLoop (Connection t ls) = forever $
-  OSC.recvPacket t >>= \osc -> withMVar ls $ H.mapM_ (\(_, l) -> l osc)
+  Osc.recvPacket t >>= \osc -> withMVar ls $ H.mapM_ (\(_, l) -> l osc)
 
--- | Create a new connection given an OSC transport.
+-- | Create a new connection given an Osc transport.
 open :: Transport t => t -> IO Connection
 open t = do
   ls <- newMVar =<< H.new
@@ -49,11 +50,11 @@ open t = do
 --
 -- The behavior of sending messages after closing the connection is undefined.
 close :: Connection -> IO ()
-close (Connection t _) = OSC.close t
+close (Connection t _) = Osc.close t
 
--- | Send an OSC packet asynchronously.
-send :: OSC o => Connection -> o -> IO ()
-send (Connection t _) = OSC.sendOSC t
+-- | Send an Osc packet asynchronously.
+send :: Connection -> Packet -> IO ()
+send (Connection t _) = Osc.sendPacket t
 
 -- ====================================================================
 -- Listeners

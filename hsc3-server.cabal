@@ -28,29 +28,28 @@ Flag build-examples
 
 Library
     Exposed-Modules:
-        Sound.SC3.Server.Allocator
-        Sound.SC3.Server.Allocator.BlockAllocator.FirstFit
-        Sound.SC3.Server.Allocator.Range
-        Sound.SC3.Server.Allocator.SetAllocator
-        Sound.SC3.Server.Allocator.SimpleAllocator
-        Sound.SC3.Server.Allocator.Wrapped
-        Sound.SC3.Server.State.Monad
-        Sound.SC3.Server.State.Monad.Class
-        Sound.SC3.Server.State.Monad.Command
-        Sound.SC3.Server.State.Monad.Process
-        Sound.SC3.Server.Notification
+        Sound.Sc3.Server.Allocator
+        Sound.Sc3.Server.Allocator.BlockAllocator.FirstFit
+        Sound.Sc3.Server.Allocator.Range
+        Sound.Sc3.Server.Allocator.SetAllocator
+        Sound.Sc3.Server.Allocator.SimpleAllocator
+        Sound.Sc3.Server.Allocator.Wrapped
+        Sound.Sc3.Server.State.Monad
+        Sound.Sc3.Server.State.Monad.Class
+        Sound.Sc3.Server.State.Monad.Command
+        Sound.Sc3.Server.State.Monad.Process
+        Sound.Sc3.Server.Notification
     Other-Modules:
-        Sound.SC3.Server.Allocator.BlockAllocator.FreeList
-        Sound.SC3.Server.Connection
-        Sound.SC3.Server.State.Monad.Request
-        Sound.SC3.Server.State
+        Sound.Sc3.Server.Allocator.BlockAllocator.FreeList
+        Sound.Sc3.Server.Connection
+        Sound.Sc3.Server.State.Monad.Request
+        Sound.Sc3.Server.State
     Build-Depends:
         base >= 4.3 && < 5
-      , bitset >= 1.0
       , bytestring
+      , exceptions
       , containers >= 0.2
       , data-default >= 0.5
-      , failure >= 0.2
       , hashtables >= 1.0
       , hosc >= 0.14
       , hsc3 >= 0.15
@@ -113,11 +112,10 @@ Test-Suite hsc3-server-test
     Main-Is: test.hs
     Hs-Source-Dirs: tests
     Other-Modules:
-        Sound.SC3.Server.Allocator.Test
-        Sound.SC3.Server.Allocator.Range.Test
+        Sound.Sc3.Server.Allocator.Test
+        Sound.Sc3.Server.Allocator.Range.Test
     Build-Depends:
         base >= 4.3 && < 5
-      , failure >= 0.2
       , hsc3-server >= 0.8
       , QuickCheck >= 2.4
       , random

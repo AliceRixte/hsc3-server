@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
-module Sound.SC3.Server.State.Monad.Request (
+module Sound.Sc3.Server.State.Monad.Request (
   Request
 , runRequest
 , exec
@@ -24,13 +24,13 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import qualified Control.Monad.Trans.Class as Trans
 import qualified Control.Monad.Trans.State as State
 import           Data.IORef (newIORef, readIORef, writeIORef)
-import           Sound.OSC.Transport.Monad (SendOSC(..))
-import qualified Sound.SC3.Server.Command.Generic as C
-import           Sound.SC3.Server.Notification (Notification)
-import qualified Sound.SC3.Server.Notification as N
-import           Sound.SC3.Server.State.Monad.Class (MonadIdAllocator(..), RequestOSC, MonadServer)
-import qualified Sound.SC3.Server.State.Monad.Class as M
-import           Sound.OSC (Bundle(..), Message(..), OSC(..), Time, immediately, packetMessages)
+import           Sound.Osc.Transport.Monad (SendOsc(..))
+import qualified Sound.Sc3.Server.Command.Generic as C
+import           Sound.Sc3.Server.Notification (Notification)
+import qualified Sound.Sc3.Server.Notification as N
+import           Sound.Sc3.Server.State.Monad.Class (MonadIdAllocator(..), RequestOsc, MonadServer)
+import qualified Sound.Sc3.Server.State.Monad.Class as M
+import           Sound.Osc (BundleOf(..), Bundle, Message(..), Time, immediately, packetMessages, PacketOf(..), sendMessage)
 
 data Builder =
     BuildDone
@@ -51,7 +51,7 @@ compile t rs = go t rs []
 
 -- | Internal state used for constructing bundles from 'Request' actions.
 data State m = State {
-    requests      :: Builder                -- ^ Current list of OSC messages.
+    requests      :: Builder                -- ^ Current list of Osc messages.
   , notifications :: [Notification (m ())]  -- ^ Current list of notifications to synchronise on.
   , cleanup       :: m ()                   -- ^ Cleanup action to deallocate resources.
   , needsSync     :: Bool                   -- ^ Whether last bundle needs a synchronisation barrier.
@@ -102,11 +102,11 @@ instance MonadIdAllocator m => MonadIdAllocator (Request m) where
 
 -- | Bundles are flattened into the resulting bundle because @scsynth@ doesn't
 -- support nested bundles.
-instance Monad m => SendOSC (Request m) where
-  sendOSC osc = modify $ \s ->
+instance Monad m => SendOsc (Request m) where
+  sendPacket p = modify $ \s ->
                  s { requests = build
                                 (requests s)
-                                (packetMessages (toPacket osc)) }
+                                (packetMessages p) }
     where build bs [] = bs
           build bs (a:as) = build (BuildSync a bs) as
 
@@ -168,7 +168,7 @@ finally (AllocT m) = modify $ \s -> s { cleanup = cleanup s >> m }
 -- | Create an asynchronous command from an allocation action.
 --
 -- The first return value should be a server resource allocated on the client,
--- the second a function that, given a completion packet, returns an OSC packet
+-- the second a function that, given a completion packet, returns an Osc packet
 -- that asynchronously allocates the resource on the server.
 mkAsync :: Monad m => AllocT m (a, (Maybe Bundle -> Message)) -> Request m a
 mkAsync (AllocT m) = do
@@ -177,7 +177,7 @@ mkAsync (AllocT m) = do
                    , needsSync = True }
   return a
 
--- | Create an asynchronous command from an OSC function that has side effects
+-- | Create an asynchronous command from an Osc function that has side effects
 --   only on the server.
 mkAsync_ :: Monad m => (Maybe Bundle -> Message) -> Request m ()
 mkAsync_ f = mkAsync $ return ((), f)
@@ -194,12 +194,12 @@ finish :: MonadIdAllocator m => Request m a -> Request m a
 finish m = do
   a <- m
   b <- gets needsSync
-  when b $ mkSync >>= sendOSC
+  when b $ mkSync >>= sendMessage
   return a
 
--- | Run a request, returning the action's result, an OSC packet,
+-- | Run a request, returning the action's result, an Osc packet,
 --   a list of notifications to synchronise on and a cleanup action.
-runRequest :: (MonadIdAllocator m, RequestOSC m) => Time -> Request m a -> m (a, Maybe (Bundle, [Notification (m ())]), m ())
+runRequest :: (MonadIdAllocator m, RequestOsc m) => Time -> Request m a -> m (a, Maybe (Bundle, [Notification (m ())]), m ())
 runRequest t r = do
   let Request m = finish r
   (a, s) <- State.runStateT m emptyState
@@ -211,18 +211,18 @@ runRequest t r = do
 -- | Execute a request.
 --
 -- The commands after the last asynchronous command will be scheduled at the given time.
-exec :: (MonadIdAllocator m, RequestOSC m) => Time -> Request m a -> m a
+exec :: (MonadIdAllocator m, RequestOsc m) => Time -> Request m a -> m a
 exec t r = do
   let Request m = finish r
   (a, s) <- State.runStateT m emptyState
   case requests s of
     BuildDone -> return ()
-    rs -> let osc = compile t rs
+    rs -> let b = compile t rs
               ns = notifications s
-          in M.requestAll osc ns >>= sequence_
+          in M.requestAll (Packet_Bundle b) ns >>= sequence_
   cleanup s
   return a
 
 -- | Execute a request immediately.
-exec_ :: (MonadIdAllocator m, RequestOSC m) => Request m a -> m a
+exec_ :: (MonadIdAllocator m, RequestOsc m) => Request m a -> m a
 exec_ = exec immediately

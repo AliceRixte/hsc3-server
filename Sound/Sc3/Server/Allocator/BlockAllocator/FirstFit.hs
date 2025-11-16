@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
-module Sound.SC3.Server.Allocator.BlockAllocator.FirstFit
+module Sound.Sc3.Server.Allocator.BlockAllocator.FirstFit
   (
     FirstFitAllocator
   , Sorting(..)
@@ -12,13 +12,13 @@ module Sound.SC3.Server.Allocator.BlockAllocator.FirstFit
   ) where
 
 import           Control.Arrow (first)
-import           Control.Failure (Failure, failure)
+import           Control.Monad.Catch (MonadThrow(..))
 import           Control.Monad (liftM)
-import           Sound.SC3.Server.Allocator (AllocFailure(..), Id, IdAllocator(..), RangeAllocator(..), Statistics(..))
-import           Sound.SC3.Server.Allocator.Range (Range)
-import qualified Sound.SC3.Server.Allocator.Range as Range
-import           Sound.SC3.Server.Allocator.BlockAllocator.FreeList (FreeList, Sorting(..))
-import qualified Sound.SC3.Server.Allocator.BlockAllocator.FreeList as FreeList
+import           Sound.Sc3.Server.Allocator (AllocFailure(..), Id, IdAllocator(..), RangeAllocator(..), Statistics(..))
+import           Sound.Sc3.Server.Allocator.Range (Range)
+import qualified Sound.Sc3.Server.Allocator.Range as Range
+import           Sound.Sc3.Server.Allocator.BlockAllocator.FreeList (FreeList, Sorting(..))
+import qualified Sound.Sc3.Server.Allocator.BlockAllocator.FreeList as FreeList
 
 data Coalescing = NoCoalescing | LazyCoalescing deriving (Enum, Eq, Show)
 
@@ -41,15 +41,15 @@ bestFit = cons IncreasingSize
 worstFit :: Integral i => Coalescing -> Range i -> FirstFitAllocator i
 worstFit = cons DecreasingSize
 
-_alloc :: (Integral i, Failure AllocFailure m) => Int -> FirstFitAllocator i -> m (Range i, FirstFitAllocator i)
+_alloc :: (Integral i, MonadThrow m) => Int -> FirstFitAllocator i -> m (Range i, FirstFitAllocator i)
 _alloc n a =
     case FreeList.alloc fits (freeList a) of
         Nothing -> case coalescing a of
                     NoCoalescing ->
-                        failure NoFreeIds
+                        throwM NoFreeIds
                     LazyCoalescing ->
                         case FreeList.alloc fits (FreeList.coalesce (freeList a)) of
-                            Nothing -> failure NoFreeIds
+                            Nothing -> throwM NoFreeIds
                             Just (r, l) -> alloc r l
         Just (r, l) -> alloc r l
     where
@@ -62,11 +62,11 @@ _alloc n a =
                  in return (r1, a { freeList = FreeList.insert r2 l
                                   , used = used a + n })
 
-_free :: (Integral i, Failure AllocFailure m) => Range i -> FirstFitAllocator i -> m (FirstFitAllocator i)
+_free :: (Integral i, MonadThrow m) => Range i -> FirstFitAllocator i -> m (FirstFitAllocator i)
 _free r a =
     let u = used a - fromIntegral (Range.size r)
     in if u < 0
-       then failure InvalidId
+       then throwM InvalidId
        else return a { freeList = FreeList.insert r (freeList a)
                      , used = u }
 

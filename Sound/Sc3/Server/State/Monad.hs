@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Sound.SC3.Server.State.Monad (
+module Sound.Sc3.Server.State.Monad (
 -- * Server Monad
   Server
 , runServer
@@ -23,8 +23,8 @@ module Sound.SC3.Server.State.Monad (
 , NodeIdAllocator
 , MonadIdAllocator(..)
 -- * Communication and synchronization
-, SendOSC(..)
-, RequestOSC(..)
+, SendOsc(..)
+, RequestOsc(..)
 , SyncId
 , SyncIdAllocator
 , sync
@@ -38,7 +38,7 @@ import           Control.Applicative (Applicative)
 import           Control.Concurrent (ThreadId)
 import           Control.Concurrent.Lifted (MVar)
 import qualified Control.Concurrent.Lifted as Conc
-import           Control.Failure (Failure)
+import           Control.Monad.Catch (MonadThrow)
 import           Control.Monad (ap, liftM, void)
 import           Control.Monad.Base (MonadBase(..))
 import           Control.Monad.Fix (MonadFix)
@@ -46,22 +46,22 @@ import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Trans.Control (MonadBaseControl(..))
 import           Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Control.Monad.Trans.Reader as R
-import           Sound.OSC (Bundle(..), Datum(Int32), Message(..), Packet(..), immediately)
-import           Sound.OSC.Transport.Monad (DuplexOSC, RecvOSC(..), SendOSC(..), Transport)
-import qualified Sound.SC3.Server.Allocator as A
-import           Sound.SC3.Server.Command (notify)
-import           Sound.SC3.Server.Connection (Connection)
-import qualified Sound.SC3.Server.Connection as C
-import qualified Sound.SC3.Server.Notification as N
-import           Sound.SC3.Server.Process.Options (ServerOptions)
-import           Sound.SC3.Server.State ( AudioBusId, AudioBusIdAllocator
+import           Sound.Osc (BundleOf(..), Datum(Int32), Message(..), Packet, PacketOf(..), immediately)
+import           Sound.Osc.Transport.Monad (DuplexOsc, RecvOsc(..), SendOsc(..), Transport)
+import qualified Sound.Sc3.Server.Allocator as A
+import           Sound.Sc3.Server.Command (notify)
+import           Sound.Sc3.Server.Connection (Connection)
+import qualified Sound.Sc3.Server.Connection as C
+import qualified Sound.Sc3.Server.Notification as N
+import           Sound.Sc3.Server.Process.Options (ServerOptions)
+import           Sound.Sc3.Server.State ( AudioBusId, AudioBusIdAllocator
                                         , BufferId, BufferIdAllocator
                                         , ControlBusId, ControlBusIdAllocator
                                         , NodeId, NodeIdAllocator
                                         , SyncId, SyncIdAllocator
                                         )
-import qualified Sound.SC3.Server.State as State
-import           Sound.SC3.Server.State.Monad.Class
+import qualified Sound.Sc3.Server.State as State
+import           Sound.Sc3.Server.State.Monad.Class
 
 data State = State {
     _serverOptions         :: ServerOptions
@@ -74,7 +74,7 @@ data State = State {
   }
 
 newtype Server a = Server { unServer :: ReaderT State IO a }
-    deriving (Applicative, Failure A.AllocFailure, Functor, Monad, MonadFix, MonadIO)
+    deriving (Applicative, MonadThrow, Functor, Monad, MonadFix, MonadIO)
 
 instance MonadBase IO Server where
   {-# INLINE liftBase #-}
@@ -145,19 +145,19 @@ instance MonadIdAllocator Server where
 withConnection :: (Connection -> IO a) -> Server a
 withConnection f = Server $ R.asks _connection >>= \c -> liftIO (f c)
 
-instance SendOSC Server where
-  sendOSC osc = withConnection (flip C.send osc)
+instance SendOsc Server where
+  sendPacket p = withConnection (flip C.send p)
 
 newtype AsTransport a = AsTransport (ReaderT (Connection, Conc.Chan Packet) IO a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance SendOSC AsTransport where
-  sendOSC osc = AsTransport $ R.asks fst >>= liftIO . flip C.send osc
+instance SendOsc AsTransport where
+  sendPacket p = AsTransport $ R.asks fst >>= liftIO . flip C.send p
 
-instance RecvOSC AsTransport where
+instance RecvOsc AsTransport where
   recvPacket = AsTransport $ R.asks snd >>= liftIO . Conc.readChan
 
-instance DuplexOSC AsTransport
+instance DuplexOsc AsTransport
 instance Transport AsTransport
 
 asTransport :: AsTransport a -> Server a
@@ -167,11 +167,11 @@ asTransport (AsTransport a) =
     C.withListener conn (liftIO . Conc.writeChan recvVar) $
       R.runReaderT a (conn, recvVar)
 
-instance RequestOSC Server where
-  request osc n     = asTransport (sendOSC osc >> N.waitFor n)
-  requestAll osc ns = asTransport (sendOSC osc >> N.waitForAll ns)
+instance RequestOsc Server where
+  request p n     = asTransport (sendPacket p >> N.waitFor n)
+  requestAll p ns = asTransport (sendPacket p >> N.waitForAll ns)
 
--- | Append a @\/sync@ message to an OSC packet.
+-- | Append a @\/sync@ message to an Osc packet.
 appendSync :: Packet -> SyncId -> Packet
 appendSync p i =
   case p of
@@ -179,7 +179,7 @@ appendSync p i =
     Packet_Bundle (Bundle t xs) -> Packet_Bundle (Bundle t (xs ++ [s]))
   where s = Message "/sync" [Int32 (fromIntegral i)]
 
--- | Send an OSC packet and wait for the synchronization barrier.
+-- | Send an Osc packet and wait for the synchronization barrier.
 sync :: Packet -> Server ()
 sync osc = do
   i <- alloc syncIdAllocator
